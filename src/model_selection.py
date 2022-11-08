@@ -1,11 +1,18 @@
 from collections import defaultdict
 from tensorflow import keras
+from transformers import AutoTokenizer
 from transformers import TFAutoModelForSequenceClassification
+
+from .dataset import load_experiment_dataset
+from .dataset.tokenization import to_tf_dataset
+from .dataset.tokenization import tokenize_dataset
 from .metrics import BinaryAccuracy
+from .metrics import SparseF1Score
 
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import tensorflow as tf
 
 
@@ -15,7 +22,7 @@ def build_classification_model(
         learning_rate=5e-5,
         extra_metrics=list(),
         extra_loss=list()
-    ):
+):
     if num_outputs == 1:
         model_loss = [
             keras.losses.BinaryCrossentropy(from_logits=True)]
@@ -52,7 +59,7 @@ def hyperparameter_search(
         executions_per_trial=5,
         callbacks=list(),
         **kwargs
-    ):
+):
     if not isinstance(lr_parameters, list):
         lr_parameters = [lr_parameters]
 
@@ -65,7 +72,7 @@ def hyperparameter_search(
         for execution in range(executions_per_trial):
             print(
                 log_msg.format(
-                trial+1, total_trials, execution+1, executions_per_trial)
+                    trial+1, total_trials, execution+1, executions_per_trial)
             )
             model = build_model_fn(
                 learning_rate=lr,
@@ -95,7 +102,10 @@ def save_metrics_log(metrics_log, figsize=None, savefig=None, title=None):
             metric_values[metric_name][lr_value]['std'] = std
 
     # metric names (not validation names)
-    metric_names = [m for m in metric_values.keys() if not m.startswith('val_')]
+    metric_names = [
+        m
+        for m in metric_values.keys()
+        if not m.startswith('val_')]
 
     # axes grid
     nrows = len(metric_names)
@@ -108,7 +118,7 @@ def save_metrics_log(metrics_log, figsize=None, savefig=None, title=None):
         sharey='row',
         figsize=figsize
     )
-    
+
     if title is not None:
         fig.suptitle(title, fontsize=16)
 
@@ -124,9 +134,9 @@ def save_metrics_log(metrics_log, figsize=None, savefig=None, title=None):
                 x = range(1, len(mean)+1)
                 ax.plot(x, mean, label=label)
                 ax.fill_between(x, mean+std, mean-std, alpha=.25)
-            
+
             _plot_mean_std(ax, metric, 'Train')
-            
+
             val_metric = 'val_' + metric
             if val_metric in metric_values.keys():
                 _plot_mean_std(ax, val_metric, 'Validation')
@@ -140,11 +150,85 @@ def save_metrics_log(metrics_log, figsize=None, savefig=None, title=None):
             ax.legend()
 
     if savefig is not None:
-        plt.savefig(savefig+'.png')
-        
+        plt.savefig(savefig + '.png')
+
         json_obj = json.dumps(metrics_log, indent=4)
-        with  open(savefig+'.json', 'w') as f:
+        with open(savefig + '.json', 'w') as f:
             f.write(json_obj)
 
-
     plt.show()
+
+
+def run_classification_model_selection(
+    dataset_id,
+    model_ids,
+    save_dir,
+    dataset_text_pair=False,
+    dataset_train_split='train',
+    dataset_validation_split='validation',
+    train_batch_size=32,
+    train_epochs=10,
+    train_execs_pre_trial=5,
+    train_lr_values=[1e-5],
+):
+    # load dataset
+    dataset = load_experiment_dataset(dataset_id)
+    _num_classes = dataset[dataset_train_split].features['label'].num_classes
+    _num_outputs = _num_classes if _num_classes > 2 else 1
+
+    for model_id in model_ids:
+        print(f"Searching hyperparameters for: {model_id}")
+
+        # load tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+        # dataset tokenization
+        tokenized_data = tokenize_dataset(
+            dataset=dataset,
+            batch_size=1024,
+            tokenizer=tokenizer,
+            text_pairs=dataset_text_pair,
+        )
+
+        # data preparation
+        train_dataset, dev_dataset = to_tf_dataset(
+            tokenized_data,
+            tokenizer,
+            batch_size=train_batch_size,
+            train_split=dataset_train_split,
+            dev_split=dataset_validation_split
+        )
+
+        # model training
+        _logs = hyperparameter_search(
+            build_classification_model,
+            train_dataset,
+            dev_dataset,
+            epochs=train_epochs,
+            lr_parameters=train_lr_values,
+            executions_per_trial=train_execs_pre_trial,
+
+            # model builder parameters:
+            model_id=model_id,
+            num_outputs=_num_outputs,
+            extra_metrics=[
+                SparseF1Score(
+                    num_classes=_num_classes,
+                    average='weighted',
+                    name='f1_score'),
+            ],
+        )
+
+        savefig_path = os.path.join(save_dir, dataset_id)
+        if not os.path.exists(savefig_path):
+            os.makedirs(savefig_path)
+
+        title = f"Model: {model_id}\n"
+        title += f"Dataset: {dataset_id}\n"
+        title += f"Batch Size: {train_batch_size}"
+
+        save_metrics_log(
+            _logs,
+            savefig=os.path.join(savefig_path, model_id),
+            title=title
+        )
