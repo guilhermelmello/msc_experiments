@@ -1,7 +1,8 @@
 #PBS -N model_selection
-#PBS -q testegpu
+#PBS -q umagpu
 #PBS -e outputs/model_selection.err
 #PBS -o outputs/model_selection.out
+#PBS -m ae
 
 
 # load python and tensorflow

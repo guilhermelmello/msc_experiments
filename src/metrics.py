@@ -38,3 +38,11 @@ class SparseF1Score(tfa.metrics.F1Score):
                 y_true = tf.one_hot(y_true, depth=self.num_classes)
 
         return super().update_state(y_true, y_pred, sample_weight)
+
+    def result(self):
+        score = super().result()
+        if self.average is not None:
+            return float(score)
+        if self.num_classes == 1:
+            return float(score[0])
+        return score

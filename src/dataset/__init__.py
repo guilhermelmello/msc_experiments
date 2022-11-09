@@ -2,8 +2,8 @@ from .loaders import *
 
 
 _dataset_loaders = {
-    'assin': load_assin,
-    'assin2': load_assin2
+    'assin_rte': load_assin_rte,
+    'assin2_rte': load_assin2_rte
 }
 
 

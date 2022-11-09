@@ -2,7 +2,7 @@ import datasets
 from .template import TextPairTemplate
 
 
-def load_assin(**kwargs):
+def load_assin_rte(**kwargs):
     task = TextPairTemplate(
         text_column='premise',
         text_pair_column='hypothesis',
@@ -12,7 +12,7 @@ def load_assin(**kwargs):
     return data
 
 
-def load_assin2(**kwargs):
+def load_assin2_rte(**kwargs):
     task = TextPairTemplate(
         text_column='premise',
         text_pair_column='hypothesis',
