@@ -170,11 +170,24 @@ def run_classification_model_selection(
     train_epochs=10,
     train_execs_pre_trial=5,
     train_lr_values=[1e-5],
+    score_threshold=.5,
 ):
     # load dataset
     dataset = load_experiment_dataset(dataset_id)
     _num_classes = dataset[dataset_train_split].features['label'].num_classes
     _num_outputs = _num_classes if _num_classes > 2 else 1
+
+    # f1 score
+    if _num_outputs == 1:
+        f1_score = SparseF1Score(
+            num_classes=1,
+            threshold=score_threshold,
+            from_logits=True)
+    else:
+        f1_score = SparseF1Score(
+            num_classes=_num_outputs,
+            threshold=None,
+            average='weighted')
 
     for model_id in model_ids:
         print(f"Searching hyperparameters for: {model_id}")
@@ -211,12 +224,7 @@ def run_classification_model_selection(
             # model builder parameters:
             model_id=model_id,
             num_outputs=_num_outputs,
-            extra_metrics=[
-                SparseF1Score(
-                    num_classes=_num_classes,
-                    average='weighted',
-                    name='f1_score'),
-            ],
+            extra_metrics=[f1_score],
         )
 
         savefig_path = os.path.join(save_dir, dataset_id)

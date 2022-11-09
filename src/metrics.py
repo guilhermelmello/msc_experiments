@@ -14,14 +14,27 @@ class BinaryAccuracy(tf.metrics.BinaryAccuracy):
         return super().update_state(y_true, y_pred, sample_weight)
 
 
-
 class SparseF1Score(tfa.metrics.F1Score):
+    """Computes F1 score from tensors with different shapes.
+
+    Usage:
+        For models with 1 output:
+            num_classes=1, threshold=threshold, from_logits=True/False
+        For models with more than 1 output:
+            num_classes=N, threshold=None, average='weighted'
+
+    """
+    def __init__(self, *args, **kwargs):
+        self.from_logits = kwargs.pop('from_logits', False)
+        super().__init__(*args, **kwargs)
+
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_true = tf.one_hot(y_true, depth=self.num_classes, axis=-1)
-        if len(y_true.shape) == 3:
-            # it seems that a bug exists when building
-            # the model with symbolic tensors. 'y_true'
-            # is considered a 2D tensor (expanded dim)
-            # instead of a 1D tensor.
-            y_true = tf.reshape(y_true, (-1, self.num_classes))
+        if self.num_classes == 1:
+            if self.from_logits:
+                y_pred = tf.math.sigmoid(y_pred)
+            y_true = tf.reshape(y_true, (-1, 1))
+        else:
+            if len(y_true.shape) == 1:
+                y_true = tf.one_hot(y_true, depth=self.num_classes)
+
         return super().update_state(y_true, y_pred, sample_weight)
