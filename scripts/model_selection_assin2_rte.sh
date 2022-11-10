@@ -1,7 +1,7 @@
-#PBS -N model_selection
+#PBS -N model_selection_assin2_rte
 #PBS -q umagpu
-#PBS -e outputs/model_selection.err
-#PBS -o outputs/model_selection.out
+#PBS -e outputs/model_selection_assin2_rte.err
+#PBS -o outputs/model_selection_assin2_rte.out
 #PBS -m ae
 
 
@@ -25,11 +25,11 @@ export TRANSFORMERS_OFFLINE=1
 
 # gpu usage
 echo "Setting GPU monitor"
-nvidia-smi pmon >> outputs/usogpu &
+nvidia-smi pmon >> outputs/usogpu_assin2_rte &
 
 # run python script
 echo "Running python script"
-python -m scripts.model_selection
+python -m scripts.model_selection_assin2_rte
 
 
 # unload virtualenv
