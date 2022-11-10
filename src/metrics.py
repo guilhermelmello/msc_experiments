@@ -36,6 +36,9 @@ class SparseF1Score(tfa.metrics.F1Score):
         else:
             if len(y_true.shape) == 1:
                 y_true = tf.one_hot(y_true, depth=self.num_classes)
+            elif y_true.shape[-1] == 1:
+                y_true = tf.one_hot(y_true, depth=self.num_classes)
+                y_true = tf.reshape(y_true, (-1, self.num_classes))
 
         return super().update_state(y_true, y_pred, sample_weight)
 
