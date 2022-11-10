@@ -29,3 +29,13 @@ def load_assin2_rte(**kwargs):
     )
     data = datasets.load_dataset('assin2', 'default', task=task)
     return data
+
+
+def load_assin2_sts(**kwargs):
+    task = TextPairTemplate(
+        text_column='premise',
+        text_pair_column='hypothesis',
+        label_column='relatedness_score'
+    )
+    data = datasets.load_dataset('assin2', 'default', task=task)
+    return data

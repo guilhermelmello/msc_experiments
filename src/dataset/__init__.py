@@ -4,7 +4,8 @@ from .loaders import *
 _dataset_loaders = {
     'assin_rte': load_assin_rte,
     'assin_sts': load_assin_sts,
-    'assin2_rte': load_assin2_rte
+    'assin2_rte': load_assin2_rte,
+    'assin2_sts': load_assin2_sts,
 }
 
 
