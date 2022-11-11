@@ -9,6 +9,7 @@ from .dataset.tokenization import tokenize_dataset
 from .metrics import BinaryAccuracy
 from .metrics import SparseF1Score
 
+import gc
 import json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -114,6 +115,7 @@ def save_metrics_log(metrics_log, figsize=None, savefig=None, title=None):
     fig, axes = plt.subplots(
         nrows=nrows,
         ncols=ncols,
+        squeeze=False,
         sharex=True,
         sharey='row',
         figsize=figsize
@@ -191,6 +193,8 @@ def run_classification_model_selection(
 
     for model_id in model_ids:
         print(f"Searching hyperparameters for: {model_id}")
+        gc.collect()
+        tf.keras.backend.clear_session()
 
         # load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(model_id)
