@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Iterable
 from tensorflow import keras
 from transformers import AutoTokenizer
 from transformers import TFAutoModelForSequenceClassification
@@ -17,12 +18,43 @@ import os
 import tensorflow as tf
 
 
+def build_model(
+    model_id,
+    num_outputs,
+    learning_rate,
+    metrics,
+    loss,
+):
+    if not isinstance(metrics, Iterable):
+        metrics = [metrics]
+
+    try:
+        model = (
+            TFAutoModelForSequenceClassification
+            .from_pretrained(model_id, num_labels=num_outputs)
+        )
+    except Exception:
+        model = (
+            TFAutoModelForSequenceClassification
+            .from_pretrained(model_id, num_labels=num_outputs,
+                             ignore_mismatched_sizes=True)
+        )
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(
+            learning_rate=learning_rate),
+        loss=loss,
+        metrics=metrics,
+    )
+    return model
+
+
 def build_classification_model(
-        model_id,
-        num_outputs,
-        learning_rate=5e-5,
-        extra_metrics=list(),
-        extra_loss=list()
+    model_id,
+    num_outputs,
+    learning_rate=5e-5,
+    extra_metrics=list(),
+    extra_loss=list()
 ):
     if num_outputs == 1:
         model_loss = [
@@ -38,28 +70,51 @@ def build_classification_model(
     model_loss += extra_loss
     model_metrics += extra_metrics
 
-    model = (
-        TFAutoModelForSequenceClassification
-        .from_pretrained(model_id, num_labels=num_outputs)
-    )
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(
-            learning_rate=learning_rate),
-        loss=model_loss,
+    model = build_model(
+        model_id=model_id,
+        num_outputs=num_outputs,
+        learning_rate=learning_rate,
         metrics=model_metrics,
+        loss=model_loss
+    )
+    return model
+
+
+def build_regression_model(
+    model_id,
+    learning_rate=5e-5,
+    extra_metrics=list(),
+    extra_loss=list()
+):
+    """
+    """
+    model_loss = [
+        tf.keras.losses.MeanAbsoluteError(name='mae')]
+    model_metrics = [
+        tf.keras.losses.MeanSquaredError(name='mse')]
+
+    model_loss += extra_loss
+    model_metrics += extra_metrics
+
+    model = build_model(
+        num_outputs=1,
+        model_id=model_id,
+        learning_rate=learning_rate,
+        model_metrics=model_metrics,
+        model_loss=model_loss
     )
     return model
 
 
 def hyperparameter_search(
-        build_model_fn,
-        train_dataset,
-        validation_dataset,
-        epochs=10,
-        lr_parameters=0.01,
-        executions_per_trial=5,
-        callbacks=list(),
-        **kwargs
+    build_model_fn,
+    train_dataset,
+    validation_dataset,
+    epochs=10,
+    lr_parameters=0.01,
+    executions_per_trial=5,
+    callbacks=list(),
+    **kwargs
 ):
     if not isinstance(lr_parameters, list):
         lr_parameters = [lr_parameters]
@@ -231,7 +286,8 @@ def run_classification_model_selection(
             extra_metrics=[f1_score],
         )
 
-        savefig_path = os.path.join(save_dir, dataset_id)
+        _dataset_id = dataset_id.replace('/', '_')
+        savefig_path = os.path.join(save_dir, _dataset_id)
         if not os.path.exists(savefig_path):
             os.makedirs(savefig_path)
 
