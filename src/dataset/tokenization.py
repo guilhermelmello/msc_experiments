@@ -8,7 +8,7 @@ def get_token_mapper(tokenizer, text_pairs=False):
             text_pair=batch['text_pair'],
             truncation=True,
             padding=False)
-        
+
     def _text_fn(batch):
         return tokenizer(
             text=batch['text'],
@@ -21,11 +21,11 @@ def get_token_mapper(tokenizer, text_pairs=False):
 
 
 def tokenize_dataset(
-        dataset,
-        tokenizer,
-        text_pairs=False,
-        batch_size=128,
-    ):
+    dataset,
+    tokenizer,
+    text_pairs=False,
+    batch_size=128,
+):
 
     text2token = get_token_mapper(
         tokenizer,
@@ -40,12 +40,12 @@ def tokenize_dataset(
 
 
 def to_tf_dataset(
-        dataset,
-        tokenizer,
-        batch_size=128,
-        train_split='train',
-        dev_split='validation',
-    ):
+    dataset,
+    tokenizer,
+    batch_size=128,
+    train_split='train',
+    dev_split='validation',
+):
 
     _kwargs = dict(
         columns=tokenizer.model_input_names,
@@ -61,5 +61,5 @@ def to_tf_dataset(
 
     _kwargs['shuffle'] = False
     dev_dataset = dataset[dev_split].to_tf_dataset(**_kwargs)
-    
+
     return train_dataset, dev_dataset
