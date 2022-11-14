@@ -100,8 +100,8 @@ def build_regression_model(
         num_outputs=1,
         model_id=model_id,
         learning_rate=learning_rate,
-        model_metrics=model_metrics,
-        model_loss=model_loss
+        metrics=model_metrics,
+        loss=model_loss
     )
     return model
 
@@ -216,10 +216,12 @@ def save_metrics_log(metrics_log, figsize=None, savefig=None, title=None):
     plt.show()
 
 
-def run_classification_model_selection(
+def _run_model_selection(
+    dataset,
     dataset_id,
     model_ids,
-    save_dir,
+    build_model_fn,
+    build_model_kwargs=dict(),
     dataset_text_pair=False,
     dataset_train_split='train',
     dataset_validation_split='validation',
@@ -227,29 +229,10 @@ def run_classification_model_selection(
     train_epochs=10,
     train_execs_pre_trial=5,
     train_lr_values=[1e-5],
-    score_threshold=.5,
+    save_dir=None,
 ):
-    # load dataset
-    dataset = load_experiment_dataset(dataset_id)
-    _num_classes = dataset[dataset_train_split].features['label'].num_classes
-    _num_outputs = _num_classes if _num_classes > 2 else 1
-
-    # f1 score
-    if _num_outputs == 1:
-        f1_score = SparseF1Score(
-            num_classes=1,
-            threshold=score_threshold,
-            from_logits=True)
-    else:
-        f1_score = SparseF1Score(
-            num_classes=_num_outputs,
-            threshold=None,
-            average='weighted')
-
     for model_id in model_ids:
         print(f"Searching hyperparameters for: {model_id}")
-        gc.collect()
-        tf.keras.backend.clear_session()
 
         # load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -273,23 +256,27 @@ def run_classification_model_selection(
 
         # model training
         _logs = hyperparameter_search(
-            build_classification_model,
-            train_dataset,
-            dev_dataset,
+            build_model_fn,
+            train_dataset=train_dataset,
+            validation_dataset=dev_dataset,
             epochs=train_epochs,
             lr_parameters=train_lr_values,
             executions_per_trial=train_execs_pre_trial,
 
             # model builder parameters:
             model_id=model_id,
-            num_outputs=_num_outputs,
-            extra_metrics=[f1_score],
+            **build_model_kwargs,
         )
 
-        _dataset_id = dataset_id.replace('/', '_')
-        savefig_path = os.path.join(save_dir, _dataset_id)
-        if not os.path.exists(savefig_path):
-            os.makedirs(savefig_path)
+        if save_dir is not None:
+            _dataset_id = dataset_id.replace('/', '_')
+            _model_id = model_id.replace('/', '_')
+
+            save_dir = os.path.join(save_dir, _dataset_id)
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+
+            save_dir = os.path.join(save_dir, _model_id)
 
         title = f"Model: {model_id}\n"
         title += f"Dataset: {dataset_id}\n"
@@ -297,6 +284,99 @@ def run_classification_model_selection(
 
         save_metrics_log(
             _logs,
-            savefig=os.path.join(savefig_path, model_id),
+            savefig=save_dir,
             title=title
         )
+
+        del tokenizer
+        del tokenized_data
+        del train_dataset, dev_dataset
+        tf.keras.backend.clear_session()
+        gc.collect()
+
+
+def run_classification_model_selection(
+    dataset_id, score_threshold=0.5, **kwargs
+):
+    """
+    args:
+        dataset_id,
+        # dataset,                      -> definidos nessa função
+        # build_model_fn,               -> definidos nessa função
+        # build_model_kwargs=dict()     -> definidos nessa função
+    kwargs:
+        model_ids,
+        dataset_text_pair=False,
+        dataset_train_split='train',
+        dataset_validation_split='validation',
+        train_batch_size=32,
+        train_epochs=10,
+        train_execs_pre_trial=5,
+        train_lr_values=[1e-5],
+        save_dir=None,
+    """
+    # load dataset
+    dataset = load_experiment_dataset(dataset_id)
+    _num_classes = dataset['train'].features['label'].num_classes
+    _num_outputs = _num_classes if _num_classes > 2 else 1
+
+    # f1 score
+    if _num_outputs == 1:
+        f1_score = SparseF1Score(
+            num_classes=1,
+            threshold=score_threshold,
+            from_logits=True)
+    else:
+        f1_score = SparseF1Score(
+            num_classes=_num_outputs,
+            threshold=None,
+            average='weighted')
+
+    _run_model_selection(
+        dataset=dataset,
+        dataset_id=dataset_id,
+        build_model_fn=build_classification_model,
+        build_model_kwargs=dict(
+            # model_id          -> passado em _run_model_selection
+            # learning_rate     -> passado em _run_model_selection
+            num_outputs=_num_outputs,
+            extra_metrics=[f1_score],
+            # extra_loss=list()
+        ),
+        **kwargs
+    )
+
+
+def run_regression_model_selection(dataset_id, **kwargs):
+    """
+    args:
+        dataset_id,
+        # dataset,                      -> definidos nessa função
+        # build_model_fn,               -> definidos nessa função
+        # build_model_kwargs=dict()     -> definidos nessa função
+    kwargs:
+        model_ids,
+        dataset_text_pair=False,
+        dataset_train_split='train',
+        dataset_validation_split='validation',
+        train_batch_size=32,
+        train_epochs=10,
+        train_execs_pre_trial=5,
+        train_lr_values=[1e-5],
+        save_dir=None,
+    """
+    # load dataset
+    dataset = load_experiment_dataset(dataset_id)
+
+    _run_model_selection(
+        dataset=dataset,
+        dataset_id=dataset_id,
+        build_model_fn=build_regression_model,
+        build_model_kwargs=dict(
+            # model_id          -> passado em _run_model_selection
+            # learning_rate     -> passado em _run_model_selection
+            # extra_metrics -> pode ser definido
+            # extra_loss    -> pode ser definido
+        ),
+        **kwargs
+    )
