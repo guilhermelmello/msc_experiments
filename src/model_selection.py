@@ -133,6 +133,18 @@ def hyperparameter_search(
 
     total_trials = len(lr_parameters)
     for trial, lr in enumerate(lr_parameters):
+        _lr = lr
+        if isinstance(lr, tuple):
+            assert len(lr) == 2
+            # using linear decay
+            steps_per_epoch = len(train_dataset)    # number of batches
+            num_train_steps = steps_per_epoch * epochs
+            lr = tf.keras.optimizers.schedules.PolynomialDecay(
+                initial_learning_rate=lr[0],
+                decay_steps=num_train_steps,
+                end_learning_rate=lr[1]
+            )
+
         for execution in range(executions_per_trial):
             print(
                 log_msg.format(
@@ -150,7 +162,7 @@ def hyperparameter_search(
             )
 
             for metric, results in model_hist.history.items():
-                metrics_log[metric][lr].append(results)
+                metrics_log[metric][_lr].append(results)
 
     return metrics_log
 
