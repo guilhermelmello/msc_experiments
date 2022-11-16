@@ -33,12 +33,6 @@ def build_model(
             TFAutoModelForSequenceClassification
             .from_pretrained(model_id, num_labels=num_outputs)
         )
-    except OSError:
-        print("Building model: from pytorch weights.")
-        model = (
-            TFAutoModelForSequenceClassification
-            .from_pretrained(model_id, num_labels=num_outputs, from_pt=True)
-        )
     except Exception:
         print("Building model: ignoring mismatched sizes.")
         model = (
