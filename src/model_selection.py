@@ -156,7 +156,7 @@ def hyperparameter_search(
             )
 
             for metric, results in model_hist.history.items():
-                metrics_log[metric][_lr].append(results)
+                metrics_log[metric][str(_lr)].append(results)
 
     return metrics_log
 
