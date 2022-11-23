@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 
 def build_model(
@@ -93,7 +94,9 @@ def build_regression_model(
     model_loss = [
         tf.keras.losses.MeanAbsoluteError(name='mae')]
     model_metrics = [
-        tf.keras.losses.MeanSquaredError(name='mse')]
+        tf.keras.metrics.MeanSquaredError(name='mse'),
+        tfa.metrics.RSquare()
+    ]
 
     model_loss += extra_loss
     model_metrics += extra_metrics
@@ -288,9 +291,11 @@ def _run_model_selection(
 
             save_dir = os.path.join(save_dir, _dataset_id)
             if not os.path.exists(save_dir):
+                print('Creating directories:', save_dir)
                 os.makedirs(save_dir)
 
             save_dir = os.path.join(save_dir, _model_id)
+            print('Saving results at:', save_dir)
 
         title = f"Model: {model_id}\n"
         title += f"Dataset: {dataset_id}\n"
