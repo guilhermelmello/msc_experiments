@@ -1,4 +1,4 @@
-#PBS -N model_selection_assin1_rte
+#PBS -N assin1_rte_model_selection
 #PBS -q umagpu
 #PBS -e outputs/model_selection_assin1_rte.err
 #PBS -o outputs/model_selection_assin1_rte.out
