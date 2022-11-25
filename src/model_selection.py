@@ -289,13 +289,13 @@ def _run_model_selection(
             _dataset_id = dataset_id.replace('/', '_')
             _model_id = model_id.replace('/', '_')
 
-            save_dir = os.path.join(save_dir, _dataset_id)
-            if not os.path.exists(save_dir):
-                print('Creating directories:', save_dir)
-                os.makedirs(save_dir)
+            _save_dir = os.path.join(save_dir, _dataset_id)
+            if not os.path.exists(_save_dir):
+                print('Creating directories:', _save_dir)
+                os.makedirs(_save_dir)
 
-            save_dir = os.path.join(save_dir, _model_id)
-            print('Saving results at:', save_dir)
+            _save_dir = os.path.join(_save_dir, _model_id)
+            print('Saving results at:', _save_dir)
 
         title = f"Model: {model_id}\n"
         title += f"Dataset: {dataset_id}\n"
