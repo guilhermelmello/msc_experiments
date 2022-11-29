@@ -6,6 +6,8 @@ _dataset_loaders = {
     'assin_sts': load_assin_sts,
     'assin2_rte': load_assin2_rte,
     'assin2_sts': load_assin2_sts,
+    'bpsad_rating': load_bpsad_rating,
+    'bpsad_polarity': load_bpsad_polarity,
 }
 
 
