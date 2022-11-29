@@ -315,7 +315,7 @@ def _run_model_selection(
 
 
 def run_classification_model_selection(
-    dataset_id, score_threshold=0.5, **kwargs
+    dataset_id, score_threshold=0.5, load_dataset_kwargs=dict(), **kwargs
 ):
     """
     args:
@@ -335,7 +335,7 @@ def run_classification_model_selection(
         save_dir=None,
     """
     # load dataset
-    dataset = load_experiment_dataset(dataset_id)
+    dataset = load_experiment_dataset(dataset_id, **load_dataset_kwargs)
     _num_classes = dataset['train'].features['label'].num_classes
     _num_outputs = _num_classes if _num_classes > 2 else 1
 
@@ -366,7 +366,9 @@ def run_classification_model_selection(
     )
 
 
-def run_regression_model_selection(dataset_id, **kwargs):
+def run_regression_model_selection(
+    dataset_id, load_dataset_kwargs=dict(), **kwargs
+):
     """
     args:
         dataset_id,
@@ -385,7 +387,7 @@ def run_regression_model_selection(dataset_id, **kwargs):
         save_dir=None,
     """
     # load dataset
-    dataset = load_experiment_dataset(dataset_id)
+    dataset = load_experiment_dataset(dataset_id, **load_dataset_kwargs)
 
     _run_model_selection(
         dataset=dataset,
