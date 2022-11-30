@@ -7,6 +7,7 @@ from transformers import TFAutoModelForSequenceClassification
 from .dataset import load_experiment_dataset
 from .dataset.tokenization import to_tf_dataset
 from .dataset.tokenization import tokenize_dataset
+from .distributed import get_strategy
 from .metrics import BinaryAccuracy
 from .metrics import SparseF1Score
 
@@ -59,27 +60,31 @@ def build_classification_model(
     extra_metrics=list(),
     extra_loss=list()
 ):
-    if num_outputs == 1:
-        model_loss = [
-            keras.losses.BinaryCrossentropy(from_logits=True)]
-        model_metrics = [
-            BinaryAccuracy('accuracy', from_logits=True)]
-    else:
-        model_loss = [
-            keras.losses.SparseCategoricalCrossentropy(from_logits=True)]
-        model_metrics = [
-            tf.metrics.SparseCategoricalAccuracy('accuracy')]
+    strategy = get_strategy('GPU')
 
-    model_loss += extra_loss
-    model_metrics += extra_metrics
+    with strategy.scope():
+        if num_outputs == 1:
+            model_loss = [
+                keras.losses.BinaryCrossentropy(from_logits=True)]
+            model_metrics = [
+                BinaryAccuracy('accuracy', from_logits=True)]
+        else:
+            model_loss = [
+                keras.losses.SparseCategoricalCrossentropy(from_logits=True)]
+            model_metrics = [
+                tf.metrics.SparseCategoricalAccuracy('accuracy')]
 
-    model = build_model(
-        model_id=model_id,
-        num_outputs=num_outputs,
-        learning_rate=learning_rate,
-        metrics=model_metrics,
-        loss=model_loss
-    )
+        model_loss += extra_loss
+        model_metrics += extra_metrics
+
+        model = build_model(
+            model_id=model_id,
+            num_outputs=num_outputs,
+            learning_rate=learning_rate,
+            metrics=model_metrics,
+            loss=model_loss
+        )
+
     return model
 
 
@@ -91,23 +96,27 @@ def build_regression_model(
 ):
     """
     """
-    model_loss = [
-        tf.keras.losses.MeanAbsoluteError(name='mae')]
-    model_metrics = [
-        tf.keras.metrics.MeanSquaredError(name='mse'),
-        tfa.metrics.RSquare()
-    ]
+    strategy = get_strategy('GPU')
 
-    model_loss += extra_loss
-    model_metrics += extra_metrics
+    with strategy.scope():
+        model_loss = [
+            tf.keras.losses.MeanAbsoluteError(name='mae')]
+        model_metrics = [
+            tf.keras.metrics.MeanSquaredError(name='mse'),
+            tfa.metrics.RSquare()
+        ]
 
-    model = build_model(
-        num_outputs=1,
-        model_id=model_id,
-        learning_rate=learning_rate,
-        metrics=model_metrics,
-        loss=model_loss
-    )
+        model_loss += extra_loss
+        model_metrics += extra_metrics
+
+        model = build_model(
+            num_outputs=1,
+            model_id=model_id,
+            learning_rate=learning_rate,
+            metrics=model_metrics,
+            loss=model_loss
+        )
+
     return model
 
 
