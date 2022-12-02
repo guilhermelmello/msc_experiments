@@ -57,8 +57,8 @@ def build_classification_model(
     model_id,
     num_outputs,
     learning_rate=5e-5,
-    extra_metrics=list(),
-    extra_loss=list()
+    build_extra_metrics=None,
+    build_extra_loss=None
 ):
     strategy = get_strategy('GPU')
 
@@ -74,8 +74,10 @@ def build_classification_model(
             model_metrics = [
                 tf.metrics.SparseCategoricalAccuracy('accuracy')]
 
-        model_loss += extra_loss
-        model_metrics += extra_metrics
+        if build_extra_loss is not None:
+            model_loss += build_extra_loss()
+        if build_extra_metrics is not None:
+            model_metrics += build_extra_metrics()
 
         model = build_model(
             model_id=model_id,
@@ -91,8 +93,8 @@ def build_classification_model(
 def build_regression_model(
     model_id,
     learning_rate=5e-5,
-    extra_metrics=list(),
-    extra_loss=list()
+    build_extra_metrics=None,
+    build_extra_loss=None
 ):
     """
     """
@@ -106,8 +108,10 @@ def build_regression_model(
             tfa.metrics.RSquare()
         ]
 
-        model_loss += extra_loss
-        model_metrics += extra_metrics
+        if build_extra_loss is not None:
+            model_loss += build_extra_loss()
+        if build_extra_metrics is not None:
+            model_metrics += build_extra_metrics()
 
         model = build_model(
             num_outputs=1,
@@ -305,6 +309,8 @@ def _run_model_selection(
 
             _save_dir = os.path.join(_save_dir, _model_id)
             print('Saving results at:', _save_dir)
+        else:
+            _save_dir = save_dir
 
         title = f"Model: {model_id}\n"
         title += f"Dataset: {dataset_id}\n"
@@ -312,7 +318,7 @@ def _run_model_selection(
 
         save_metrics_log(
             _logs,
-            savefig=save_dir,
+            savefig=_save_dir,
             title=title
         )
 
@@ -349,16 +355,25 @@ def run_classification_model_selection(
     _num_outputs = _num_classes if _num_classes > 2 else 1
 
     # f1 score
-    if _num_outputs == 1:
-        f1_score = SparseF1Score(
-            num_classes=1,
-            threshold=score_threshold,
-            from_logits=True)
-    else:
-        f1_score = SparseF1Score(
-            num_classes=_num_outputs,
-            threshold=None,
-            average='weighted')
+    def build_extra_metrics():
+        def f1_binary():
+            f1_score = SparseF1Score(
+                num_classes=1,
+                threshold=score_threshold,
+                from_logits=True)
+            return [f1_score]
+
+        def f1_multi():
+            f1_score = SparseF1Score(
+                num_classes=_num_outputs,
+                threshold=None,
+                average='weighted')
+            return [f1_score]
+
+        if _num_outputs == 1:
+            return f1_binary
+        else:
+            return f1_multi
 
     _run_model_selection(
         dataset=dataset,
@@ -368,7 +383,7 @@ def run_classification_model_selection(
             # model_id          -> passado em _run_model_selection
             # learning_rate     -> passado em _run_model_selection
             num_outputs=_num_outputs,
-            extra_metrics=[f1_score],
+            build_extra_metrics=build_extra_metrics(),
             # extra_loss=list()
         ),
         **kwargs
